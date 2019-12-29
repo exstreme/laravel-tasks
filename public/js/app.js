@@ -62829,8 +62829,6 @@ __webpack_require__(/*! ./components/Main */ "./resources/js/components/Main.js"
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var laravel_echo__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! laravel-echo */ "./node_modules/laravel-echo/dist/echo.js");
-/* harmony import */ var socket_io_client__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/lib/index.js");
-/* harmony import */ var socket_io_client__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(socket_io_client__WEBPACK_IMPORTED_MODULE_1__);
 window._ = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
 /**
  * We'll load the axios HTTP library which allows us to easily issue requests
@@ -62846,16 +62844,12 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * allows your team to easily build robust real-time web applications.
  */
 
-
+ //import socketio from 'socket.io-client';
 
 window.io = __webpack_require__(/*! socket.io-client */ "./node_modules/socket.io-client/lib/index.js");
 window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
   broadcaster: 'socket.io',
-  host: window.location.hostname + ':6001',
-  client: socket_io_client__WEBPACK_IMPORTED_MODULE_1___default.a
-});
-window.Echo.channel('tasks').listen('TaskCreated', function (ev) {
-  return console.log(ev);
+  host: window.location.hostname + ':6001'
 });
 
 /***/ }),
@@ -63001,6 +62995,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var react_dom__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(react_dom__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _Task__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Task */ "./resources/js/components/Task.js");
 /* harmony import */ var _AddTask__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./AddTask */ "./resources/js/components/AddTask.js");
+/* harmony import */ var _Modal__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./Modal */ "./resources/js/components/Modal.js");
 function _typeof(obj) { if (typeof Symbol === "function" && typeof Symbol.iterator === "symbol") { _typeof = function _typeof(obj) { return typeof obj; }; } else { _typeof = function _typeof(obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; } return _typeof(obj); }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -63023,6 +63018,7 @@ function _setPrototypeOf(o, p) { _setPrototypeOf = Object.setPrototypeOf || func
 
 
 
+
 /* Main Component */
 
 var Main =
@@ -63039,7 +63035,9 @@ function (_Component) {
 
     _this.state = {
       tasks: [],
-      currentTask: null
+      currentTask: null,
+      visible: 'none',
+      message: ''
     };
     _this.handleAddTask = _this.handleAddTask.bind(_assertThisInitialized(_this));
     return _this;
@@ -63063,6 +63061,52 @@ function (_Component) {
           tasks: tasks
         });
       });
+      window.Echo.channel('laravel_database_tasks').listen('TaskCreated', function (ev) {
+        return _this2.renderModal(ev);
+      });
+      window.Echo.channel('laravel_database_tasks_due_date').listen('TaskDueDate', function (ev) {
+        return _this2.renderModal(ev);
+      });
+    }
+  }, {
+    key: "renderModal",
+    value: function renderModal(ev) {
+      var message;
+
+      if (ev.alarm) {
+        message = 'Наступил крайний срок по задаче: ' + ev.task.description;
+        fetch('api/stats', {
+          method: 'post',
+
+          /* headers are important*/
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            task_id: ev.task.id
+          })
+        });
+      } else {
+        message = 'Добавлена новая задача. Крайний срок: ' + ev.task.due_date;
+        this.setState(function (prevState) {
+          return {
+            tasks: prevState.tasks.concat(ev.task)
+          };
+        });
+      }
+
+      this.setState({
+        visible: 'block'
+      });
+      this.setState({
+        message: message
+      });
+      setTimeout(function (e) {
+        e.setState({
+          visible: 'hidden'
+        });
+      }, 10000);
     }
   }, {
     key: "renderTasks",
@@ -63137,7 +63181,12 @@ function (_Component) {
         padding: '20px 20px 20px 20px',
         margin: '30px 10px 10px 30px'
       };
-      return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+      return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", null, react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_Modal__WEBPACK_IMPORTED_MODULE_4__["default"], {
+        modal: {
+          modalVisible: this.state.visible,
+          message: this.state.message
+        }
+      }), react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
         style: mainDivStyle
       }, react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
         style: divStyle
@@ -63145,7 +63194,7 @@ function (_Component) {
         task: this.state.currentTask
       }), react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(_AddTask__WEBPACK_IMPORTED_MODULE_3__["default"], {
         onAdd: this.handleAddTask
-      }));
+      })));
     }
   }]);
 
@@ -63159,6 +63208,37 @@ function (_Component) {
 if (document.getElementById('root')) {
   react_dom__WEBPACK_IMPORTED_MODULE_1___default.a.render(react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement(Main, null), document.getElementById('root'));
 }
+
+/***/ }),
+
+/***/ "./resources/js/components/Modal.js":
+/*!******************************************!*\
+  !*** ./resources/js/components/Modal.js ***!
+  \******************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
+/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
+
+
+var ModalWindow = function ModalWindow(_ref) {
+  var modal = _ref.modal;
+  var divStyle = {
+    color: "#3c763d",
+    background: "#dff0d8",
+    border: "#d6e9c6 1px solid",
+    padding: "15px",
+    display: modal.modalVisible
+  };
+  return react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("div", {
+    style: divStyle
+  }, react__WEBPACK_IMPORTED_MODULE_0___default.a.createElement("strong", null, modal.message));
+};
+
+/* harmony default export */ __webpack_exports__["default"] = (ModalWindow);
 
 /***/ }),
 
@@ -63221,8 +63301,8 @@ var Task = function Task(_ref) {
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(/*! D:\Server\OSPanel\domains\laravel.dev\resources\js\app.js */"./resources/js/app.js");
-module.exports = __webpack_require__(/*! D:\Server\OSPanel\domains\laravel.dev\resources\sass\app.scss */"./resources/sass/app.scss");
+__webpack_require__(/*! D:\Server\OSPanel\domains\laravel.loc\resources\js\app.js */"./resources/js/app.js");
+module.exports = __webpack_require__(/*! D:\Server\OSPanel\domains\laravel.loc\resources\sass\app.scss */"./resources/sass/app.scss");
 
 
 /***/ }),

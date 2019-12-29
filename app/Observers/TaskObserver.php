@@ -15,7 +15,7 @@ class TaskObserver
      */
     public function created(Task $task)
     {
-        broadcast(new TaskCreated());
+        broadcast(new TaskCreated($task));
     }
 
     /**
